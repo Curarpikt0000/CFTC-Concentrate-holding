@@ -1,0 +1,40 @@
+name: CFTC Metals to Notion Sync
+
+on:
+  schedule:
+    # 设定为每周六运行 (UTC时间 02:00)，确保官网美东时间周五下午的数据已完全发布
+    - cron: '0 2 * * 6'
+  workflow_dispatch: 
+
+jobs:
+  run-sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write 
+      
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install Dependencies
+        run: pip install requests pandas
+          
+      - name: Run Script & Sync to Notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: python cftc_notion_sync.py
+        
+      - name: Commit and Push Filtered File
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          git commit -m "Add new CFTC Metals data file" || true
+          git push
